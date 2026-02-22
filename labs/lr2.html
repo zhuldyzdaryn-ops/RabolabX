@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабораторная работа №2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root { --primary: #2c3e50; --accent: #2980b9; --bg: #f4f6f7; --panel: #ffffff; --success: #27ae60; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: #34495e; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            max-width: 1300px;
+            width: 100%;
+        }
+
+        .card { background: var(--panel); padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        h1 { color: var(--primary); border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; font-size: 1.4rem; }
+        h2 { font-size: 1.1rem; margin-top: 0; }
+        h3 { font-size: 1rem; margin-bottom: 5px; color: #555; }
+
+        /* ФОРМУЛЫ (HTML/CSS) */
+        .formula-box { 
+            background: #ecf0f1; padding: 10px; text-align: center; border-radius: 6px; 
+            border: 1px solid #bdc3c7; margin: 10px 0; 
+            font-family: 'Times New Roman', serif; font-size: 1.5rem; font-style: italic;
+        }
+        .fraction { display: inline-block; vertical-align: middle; text-align: center; margin: 0 5px; }
+        .fraction-top { border-bottom: 1px solid #000; display: block; padding-bottom: 2px; }
+        .fraction-bottom { display: block; padding-top: 2px; }
+        sup { font-size: 0.7em; }
+
+        /* УПРАВЛЕНИЕ */
+        .control-group { margin-bottom: 15px; }
+        label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 5px; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .val-display { color: var(--accent); font-weight: bold; font-family: monospace; font-size: 1.1em; }
+        
+        .stopwatch {
+            background: #34495e; color: #f1c40f; font-family: 'Courier New', monospace; 
+            font-size: 2.2rem; text-align: center; padding: 10px; border-radius: 6px; margin: 15px 0;
+        }
+        .sensor-led { 
+            width: 12px; height: 12px; border-radius: 50%; background: #555; 
+            display: inline-block; margin: 0 5px; border: 1px solid #999; 
+        }
+        .led-active { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+
+        .btn { border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 5px; color: white; }
+        .btn-start { background: var(--success); }
+        .btn-start:disabled { background: #bdc3c7; }
+        .btn-start:hover:not(:disabled) { background: #219150; }
+        .btn-record { background: var(--accent); }
+        .btn-record:disabled { background: #bdc3c7; }
+        .btn-reset { background: #95a5a6; }
+
+        /* СИМУЛЯЦИЯ */
+        .simulation-card { grid-column: 2; grid-row: 2 / 3; height: 450px; display: flex; flex-direction: column; }
+        .svg-container { flex-grow: 1; border: 1px solid #dfe6e9; background: #fff; border-radius: 8px; position: relative; overflow: hidden; }
+        
+        .ramp-line { stroke: #34495e; stroke-width: 8; stroke-linecap: round; }
+        .ball { fill: #95a5a6; stroke: #7f8c8d; stroke-width: 1; }
+        .sensor-box { fill: #c0392b; opacity: 0.8; }
+        
+        /* ТАБЛИЦА */
+        .table-container { grid-column: 1 / -1; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
+        th { background-color: #ecf0f1; }
+        .current-row { background-color: #e8f8f5 !important; border-left: 4px solid var(--success); }
+
+        /* ГРАФИКИ */
+        .charts-container { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        canvas { width: 100%; max-height: 250px; }
+    </style>
+</head>
+<body>
+
+<div class="grid-container">
+
+    <div class="card" style="grid-column: 1 / -1;">
+        <h1>Лабораторная работа: Движение по наклонной плоскости</h1>
+        <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+            <div style="flex: 1;">
+                <h3>Цель:</h3>
+                <p>Измерить время скатывания шара и вычислить ускорение.</p>
+                <h3>Формула ускорения:</h3>
+                <div class="formula-box">
+                    a = <div class="fraction">
+                        <span class="fraction-top">2S</span>
+                        <span class="fraction-bottom">t<sup>2</sup></span>
+                    </div>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <h3>Ход работы:</h3>
+                <ol>
+                    <li>Установите угол (&alpha;) и расстояние (S).</li>
+                    <li>Нажмите <b>ЗАПУСК</b>. Время будет немного отличаться из-за погрешности.</li>
+                    <li>Нажмите <b>ЗАПИСАТЬ</b>.</li>
+                    <li>Сделайте <b>5 измерений</b> для одного расстояния (не меняя S), чтобы заполнить строку таблицы.</li>
+                    <li>Измените S и повторите опыт.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Настройки</h2>
+        
+        <div class="control-group">
+            <label>Угол наклона (&alpha;): <span class="val-display"><span id="angle-val">10</span>&deg;</span></label>
+            <input type="range" id="angle-input" min="5" max="25" value="10" step="1" oninput="updateSetup()">
+        </div>
+
+        <div class="control-group">
+            <label>Расстояние (S): <span class="val-display"><span id="dist-val">0.50</span> м</span></label>
+            <input type="range" id="dist-input" min="0.3" max="1.4" value="0.50" step="0.1" oninput="updateSetup()">
+        </div>
+
+        <div class="stopwatch">
+            <span id="timer-display">0.000</span>
+        </div>
+        <div style="text-align: center; margin-bottom: 10px;">
+            <span id="led-1" class="sensor-led"></span> Старт
+            &nbsp;|&nbsp;
+            <span id="led-2" class="sensor-led"></span> Финиш
+        </div>
+
+        <button class="btn btn-start" id="btn-start" onclick="startSimulation()">▶ ЗАПУСК</button>
+        <button class="btn btn-record" id="btn-record" onclick="recordData()" disabled>⬇ ЗАПИСАТЬ</button>
+        <button class="btn btn-reset" onclick="resetSim()">↺ СБРОС</button>
+    </div>
+
+    <div class="card simulation-card">
+        <div class="svg-container">
+            <svg id="sim-svg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f0f0f0" stroke-width="1"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+
+                <g id="ramp-group" transform="translate(50, 100)">
+                    
+                    <line x1="0" y1="0" x2="800" y2="0" class="ramp-line" />
+                    <path d="M 0,0 L 800,0 L 0,200 Z" fill="rgba(0,0,0,0.05)" style="pointer-events: none;"/>
+
+                    <rect x="-5" y="-15" width="10" height="15" class="sensor-box" />
+                    <text x="0" y="25" font-size="12" text-anchor="middle" fill="#7f8c8d">0</text>
+
+                    <g id="sensor-2-group">
+                        <rect x="-5" y="-15" width="10" height="15" class="sensor-box" />
+                        <polygon points="0,-15 -5,-25 5,-25" fill="#c0392b" />
+                        <text x="0" y="25" font-size="12" text-anchor="middle" fill="#c0392b" font-weight="bold" id="sensor-2-text">50см</text>
+                    </g>
+
+                    <circle cx="0" cy="-12" r="12" class="ball" id="ball">
+                         <circle cx="-4" cy="-4" r="3" fill="white" opacity="0.4" />
+                    </circle>
+                </g>
+
+                <path d="M 50,100 L 150,100" stroke="#bdc3c7" stroke-dasharray="4" />
+                <path d="M 120,100 A 70,70 0 0,1 118,120" fill="none" stroke="#bdc3c7" id="angle-arc"/>
+                <text x="130" y="115" font-size="14" fill="#7f8c8d">&alpha;</text>
+            </svg>
+        </div>
+        <div style="padding: 10px; background: #ecf0f1; border-top: 1px solid #ddd;">
+            <strong>Статус:</strong> <span id="status-text">Ожидание настройки...</span>
+        </div>
+    </div>
+
+    <div class="card table-container">
+        <div style="display: flex; justify-content: space-between;">
+            <h2>Журнал измерений</h2>
+            <button class="btn" style="width: auto; background: #e74c3c; padding: 5px 15px;" onclick="clearTable()">Очистить таблицу</button>
+        </div>
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>S (м)</th>
+                    <th>t<sub>1</sub> (с)</th>
+                    <th>t<sub>2</sub> (с)</th>
+                    <th>t<sub>3</sub> (с)</th>
+                    <th>t<sub>4</sub> (с)</th>
+                    <th>t<sub>5</sub> (с)</th>
+                    <th>t<sub>ср</sub> (с)</th>
+                    <th>t<sub>ср</sub><sup>2</sup> (с<sup>2</sup>)</th>
+                    <th>a (м/с<sup>2</sup>)</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <div class="charts-container">
+        <div class="card">
+            <h3>График S(t)</h3>
+            <canvas id="chartSt"></canvas>
+            <p style="text-align: center; color: #7f8c8d; font-size: 0.9em;">(По среднему времени)</p>
+        </div>
+        <div class="card">
+            <h3>График S(t<sup>2</sup>)</h3>
+            <canvas id="chartSt2"></canvas>
+            <p style="text-align: center; color: #7f8c8d; font-size: 0.9em;">(По среднему времени)</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // === КОНСТАНТЫ ===
+    const g = 9.81;
+    const PIXELS_PER_METER = 450; 
+    
+    // Переменные состояния
+    let currentS = 0.5;
+    let currentAngle = 10;
+    let measuredTime = 0;
+    let isRunning = false;
+    let animationId = null;
+
+    // Переменные таблицы
+    let lastRecordedS = -1;
+    let lastRecordedAngle = -1;
+    let currentTrialIndex = 0; // 0..4 (5 опытов)
+    let currentRowId = null;
+
+    // UI элементы
+    const ui = {
+        angleInput: document.getElementById('angle-input'),
+        distInput: document.getElementById('dist-input'),
+        angleVal: document.getElementById('angle-val'),
+        distVal: document.getElementById('dist-val'),
+        timer: document.getElementById('timer-display'),
+        rampGroup: document.getElementById('ramp-group'),
+        sensor2Group: document.getElementById('sensor-2-group'),
+        sensor2Text: document.getElementById('sensor-2-text'), 
+        ball: document.getElementById('ball'),
+        led1: document.getElementById('led-1'),
+        led2: document.getElementById('led-2'),
+        status: document.getElementById('status-text'),
+        btnStart: document.getElementById('btn-start'),
+        btnRecord: document.getElementById('btn-record'),
+        tableBody: document.querySelector('#data-table tbody')
+    };
+
+    // Графики
+    const chartOpts = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { title: {display:true, text: 'S (м)'} } } };
+    
+    const chartSt = new Chart(document.getElementById('chartSt'), { type: 'scatter', data: { datasets: [{ data: [], backgroundColor: '#2980b9', pointRadius: 5 }] }, options: chartOpts });
+    chartSt.options.scales.x = { title: { display: true, text: 't ср (с)' } };
+
+    const chartSt2 = new Chart(document.getElementById('chartSt2'), { type: 'scatter', data: { datasets: [{ data: [], backgroundColor: '#27ae60', pointRadius: 5 }] }, options: chartOpts });
+    chartSt2.options.scales.x = { title: { display: true, text: 't ср² (с²)' } };
+
+    // === ЛОГИКА ===
+
+    function updateSetup() {
+        if (isRunning) return;
+
+        currentAngle = parseInt(ui.angleInput.value);
+        currentS = parseFloat(ui.distInput.value);
+
+        ui.angleVal.innerText = currentAngle;
+        ui.distVal.innerText = currentS.toFixed(2);
+        
+        // Динамический текст на датчике
+        ui.sensor2Text.textContent = Math.round(currentS * 100) + ' см';
+
+        // Поворот плоскости (положительный угол = вниз)
+        ui.rampGroup.setAttribute('transform', `translate(50, 100) rotate(${currentAngle})`);
+
+        // Положение датчика
+        const px = currentS * PIXELS_PER_METER;
+        ui.sensor2Group.setAttribute('transform', `translate(${px}, 0)`);
+
+        resetBall();
+        ui.status.innerText = "Готов к запуску";
+        ui.btnRecord.disabled = true;
+    }
+
+    function resetBall() {
+        ui.ball.setAttribute('cx', 0);
+        ui.ball.setAttribute('cy', -12);
+        ui.timer.innerText = "0.000";
+        ui.led1.classList.remove('led-active');
+        ui.led2.classList.remove('led-active');
+    }
+
+    function startSimulation() {
+        if (isRunning) return;
+        isRunning = true;
+        ui.btnStart.disabled = true;
+        ui.btnRecord.disabled = true;
+        resetBall();
+
+        // Физика
+        const rad = currentAngle * Math.PI / 180;
+        const a_theor = g * Math.sin(rad);
+        const t_ideal = Math.sqrt((2 * currentS) / a_theor);
+        
+        // Погрешность (рефлексы)
+        const error = (Math.random() - 0.5) * 0.1;
+        measuredTime = t_ideal + error;
+        if (measuredTime < 0.05) measuredTime = t_ideal; 
+
+        let startTime = null;
+        const duration = measuredTime * 1000;
+        ui.led1.classList.add('led-active');
+        ui.status.innerText = "Движение...";
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+
+            if (elapsed < duration) {
+                const t_curr = elapsed / 1000;
+                // a_anim для визуала
+                const a_anim = (2 * currentS) / (measuredTime * measuredTime);
+                const s_curr = 0.5 * a_anim * t_curr * t_curr;
+                const px = s_curr * PIXELS_PER_METER;
+
+                ui.ball.setAttribute('cx', px);
+                ui.timer.innerText = t_curr.toFixed(3);
+                animationId = requestAnimationFrame(animate);
+            } else {
+                finishRun();
+            }
+        }
+        animationId = requestAnimationFrame(animate);
+    }
+
+    function finishRun() {
+        isRunning = false;
+        ui.btnStart.disabled = false;
+        ui.btnRecord.disabled = false;
+        
+        ui.ball.setAttribute('cx', currentS * PIXELS_PER_METER);
+        ui.timer.innerText = measuredTime.toFixed(3);
+        ui.led2.classList.add('led-active');
+        ui.status.innerText = "Опыт завершен.";
+    }
+
+    function resetSim() {
+        if (animationId) cancelAnimationFrame(animationId);
+        isRunning = false;
+        ui.btnStart.disabled = false;
+        updateSetup();
+    }
+
+    // === ТАБЛИЦА ===
+
+    function recordData() {
+        ui.btnRecord.disabled = true;
+        ui.status.innerText = "Результат записан.";
+        const t = parseFloat(measuredTime.toFixed(3));
+
+        // Сравнение условий (с допуском)
+        const sameConditions = (Math.abs(currentS - lastRecordedS) < 0.001 && currentAngle === lastRecordedAngle);
+        
+        if (sameConditions && currentTrialIndex < 5 && currentRowId) {
+            updateExistingRow(t);
+        } else {
+            createNewRow(t);
+        }
+        updateCharts();
+    }
+
+    function createNewRow(t) {
+        lastRecordedS = currentS;
+        lastRecordedAngle = currentAngle;
+        currentTrialIndex = 1;
+
+        const tbody = ui.tableBody;
+        const row = document.createElement('tr');
+        currentRowId = 'row-' + Date.now();
+        row.id = currentRowId;
+        
+        const a_val = (2 * currentS) / (t * t);
+
+        row.innerHTML = `
+            <td>${tbody.children.length + 1}</td>
+            <td>${currentS.toFixed(2)}</td>
+            <td id="t1-${currentRowId}">${t.toFixed(3)}</td>
+            <td id="t2-${currentRowId}">-</td>
+            <td id="t3-${currentRowId}">-</td>
+            <td id="t4-${currentRowId}">-</td>
+            <td id="t5-${currentRowId}">-</td>
+            <td id="tavg-${currentRowId}">${t.toFixed(3)}</td>
+            <td id="t2avg-${currentRowId}">${(t*t).toFixed(3)}</td>
+            <td id="a-${currentRowId}">${a_val.toFixed(2)}</td>
+        `;
+        
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('current-row'));
+        row.classList.add('current-row');
+        tbody.appendChild(row);
+    }
+
+    function updateExistingRow(t) {
+        const row = document.getElementById(currentRowId);
+        let times = [];
+
+        // Собираем старые
+        for (let i = 1; i <= currentTrialIndex; i++) {
+             times.push(parseFloat(document.getElementById(`t${i}-${currentRowId}`).innerText));
+        }
+
+        // Новое
+        const nextIndex = currentTrialIndex + 1;
+        document.getElementById(`t${nextIndex}-${currentRowId}`).innerText = t.toFixed(3);
+        times.push(t);
+
+        currentTrialIndex++;
+
+        if (currentTrialIndex === 5) {
+            row.classList.remove('current-row');
+            currentRowId = null;
+        }
+
+        // Среднее
+        const avg = times.reduce((a, b) => a + b, 0) / times.length;
+        const avgSq = avg * avg;
+        const accel = (2 * currentS) / avgSq;
+
+        document.getElementById(`tavg-${currentRowId}`).innerText = avg.toFixed(3);
+        document.getElementById(`t2avg-${currentRowId}`).innerText = avgSq.toFixed(3);
+        document.getElementById(`a-${currentRowId}`).innerText = accel.toFixed(2);
+    }
+
+    function updateCharts() {
+        const rows = document.querySelectorAll('#data-table tbody tr');
+        const dataSt = [];
+        const dataSt2 = [];
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            // 1=S, 7=t_avg, 8=t_avg^2
+            const S = parseFloat(cells[1].innerText);
+            const t_avg = parseFloat(cells[7].innerText);
+            const t2_avg = parseFloat(cells[8].innerText);
+
+            dataSt.push({x: t_avg, y: S});
+            dataSt2.push({x: t2_avg, y: S});
+        });
+
+        chartSt.data.datasets[0].data = dataSt;
+        chartSt.update();
+
+        chartSt2.data.datasets[0].data = dataSt2;
+        chartSt2.update();
+    }
+
+    function clearTable() {
+        ui.tableBody.innerHTML = '';
+        chartSt.data.datasets[0].data = []; chartSt.update();
+        chartSt2.data.datasets[0].data = []; chartSt2.update();
+        lastRecordedS = -1; currentRowId = null; currentTrialIndex = 0;
+    }
+
+    updateSetup();
+
+</script>
+</body>
+</html>

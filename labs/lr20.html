@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лаб. работа №19: Столкновение шаров</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #2980b9; --bg: #f4f7f6; --panel: #ffffff; --text: #333; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+
+        /* Верхняя панель */
+        header {
+            background: var(--primary); 
+            color: white; 
+            padding: 12px 20px;
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        h1 { margin: 0; font-size: 1.2rem; }
+        
+        /* Тумблер в правом верхнем углу */
+        .lang-btn {
+            background: rgba(255,255,255,0.1); 
+            border: 1px solid rgba(255,255,255,0.5); 
+            color: white;
+            padding: 6px 15px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        .lang-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* Основная сетка */
+        .main-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            grid-template-rows: 1fr 200px;
+            gap: 15px;
+            padding: 15px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* Карточки */
+        .card {
+            background: var(--panel); border-radius: 8px; padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            display: flex; flex-direction: column;
+        }
+
+        /* 1. Теория и Оборудование (Левая колонка) */
+        .theory-section { grid-row: 1 / 3; border-right: 4px solid var(--accent); }
+        h2 { color: var(--accent); margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .equipment-list { font-size: 0.9rem; color: #555; margin-bottom: 15px; list-style-type: disc; padding-left: 20px; }
+        .theory-text { font-size: 0.9rem; line-height: 1.4; margin-bottom: 15px; }
+        
+        .formula-box {
+            background: #f0f8ff; border: 1px solid #d6e9f9; padding: 10px;
+            text-align: center; font-family: 'Times New Roman', serif; font-style: italic; margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        /* 2. Симуляция (Центр) */
+        .sim-section { 
+            position: relative; background: radial-gradient(circle at center, #fff, #eef2f3); 
+            border: 1px solid #ddd; cursor: default;
+        }
+        .controls-overlay {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(255,255,255,0.9); padding: 10px;
+            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        select, button {
+            padding: 6px 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; cursor: pointer; display: block; width: 100%;
+        }
+        .btn-action { background: var(--accent); color: white; border: none; font-weight: bold; }
+        .btn-action:hover { background: #1f6391; }
+
+        /* 3. Журнал (Низ) */
+        .journal-section { grid-column: 2 / 3; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #f9f9f9; color: var(--primary); }
+        .conclusion-box {
+            width: 100%; height: 60px; margin-top: 10px; padding: 5px;
+            border: 1px solid #ccc; border-radius: 4px; font-family: inherit;
+            resize: none;
+        }
+
+        /* SVG элементы */
+        .thread { stroke: #555; stroke-width: 1.5; }
+        .pivot-line { stroke: #333; stroke-width: 4; stroke-linecap: round; }
+        .ruler-mark { stroke: #aaa; stroke-width: 1; }
+        .ruler-text { fill: #888; font-size: 10px; text-anchor: end; }
+        
+        /* Подсказка */
+        .hint {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 8px 16px;
+            border-radius: 20px; font-size: 0.9rem; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1 id="main-title">Лаб. №19: Столкновение шаров равной массы</h1>
+    <button class="lang-btn" onclick="toggleLang()">RU / KZ</button>
+</header>
+
+<div class="main-container">
+    
+    <div class="card theory-section">
+        <h2 id="goal-header">Цель работы</h2>
+        <p class="theory-text" id="goal-text">Закрепить представление об упругом и неупругом взаимодействии на примере стальных шаров равной массы.</p>
+        
+        <h2 id="equip-header">Оборудование</h2>
+        <ul class="equipment-list">
+            <li id="eq-1">Штатив с муфтой</li>
+            <li id="eq-2">Бифилярный подвес (две нити)</li>
+            <li id="eq-3">Два шара одинаковой массы</li>
+            <li id="eq-4">Пластилин (для неупругого удара)</li>
+        </ul>
+
+        <h2 id="theory-header">Краткая теория</h2>
+        <p class="theory-text" id="theory-text">
+            Для обеспечения центрального удара используется бифилярный подвес.
+            При абсолютно упругом ударе шаров равной массы (m<sub>1</sub> = m<sub>2</sub>) налетающий шар останавливается, а покоящийся приобретает его скорость.
+        </p>
+        <div class="formula-box">m v<sub>1</sub> = m u<sub>2</sub></div>
+        <p class="theory-text" id="theory-text-2">
+            При неупругом ударе (с пластилином) шары слипаются и движутся вместе со скоростью v/2. Высота подъема уменьшается в 4 раза.
+        </p>
+        <div class="formula-box">m v<sub>1</sub> = 2m u</div>
+    </div>
+
+    <div class="card sim-section" id="sim-container">
+        <div class="controls-overlay">
+            <label id="lbl-mode" style="font-size:0.8rem; font-weight:bold; display:block; margin-bottom:3px;">Режим опыта:</label>
+            <select id="mode-select" onchange="resetSim()">
+                <option value="elastic">Упругий удар (Сталь)</option>
+                <option value="inelastic">Неупругий удар (Пластилин)</option>
+            </select>
+            <div style="margin: 10px 0; font-size: 0.9rem;">
+                <span id="lbl-angle">Угол:</span> <strong id="val-angle" style="color:var(--accent)">0°</strong>
+            </div>
+            <button class="btn-action" onclick="resetSim()" id="btn-reset">СБРОС</button>
+            <button style="margin-top:5px;" onclick="recordResult()" id="btn-record">ЗАПИСАТЬ В ЖУРНАЛ</button>
+        </div>
+
+        <svg id="scene" viewBox="-200 0 400 350" preserveAspectRatio="xMidYMax meet">
+            <defs>
+                <radialGradient id="grad-ball" cx="30%" cy="30%" r="70%">
+                    <stop offset="0%" style="stop-color:#fff;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#34495e;stop-opacity:1" />
+                </radialGradient>
+                <radialGradient id="grad-clay" cx="30%" cy="30%" r="70%">
+                    <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#c0392b;stop-opacity:1" />
+                </radialGradient>
+            </defs>
+
+            <g id="ruler-group" transform="translate(180, 0)"></g>
+
+            <line x1="-50" y1="20" x2="50" y2="20" class="pivot-line" />
+
+            <g id="p1">
+                <line id="t1-L" x1="-30" y1="20" x2="0" y2="300" class="thread" />
+                <line id="t1-R" x1="-10" y1="20" x2="0" y2="300" class="thread" />
+                <circle id="b1" cx="0" cy="300" r="20" fill="url(#grad-ball)" style="cursor: grab" />
+            </g>
+
+            <g id="p2">
+                <line id="t2-L" x1="10" y1="20" x2="0" y2="300" class="thread" />
+                <line id="t2-R" x1="30" y1="20" x2="0" y2="300" class="thread" />
+                <circle id="b2" cx="0" cy="300" r="20" fill="url(#grad-ball)" />
+                <circle id="clay" cx="-18" cy="300" r="7" fill="url(#grad-clay)" visibility="hidden"/>
+            </g>
+            
+            <text x="130" y="50" font-family="monospace" font-size="12" fill="#555" id="h-display">h = 0.0 cm</text>
+
+        </svg>
+        
+        <div class="hint" id="hint-box">✋ Потяните левый шар и отпустите</div>
+    </div>
+
+    <div class="card journal-section">
+        <h2 id="journal-header">Рабочий журнал</h2>
+        <table id="results-table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th id="th-mode">Режим</th>
+                    <th id="th-angle">Угол нач (&deg;)</th>
+                    <th id="th-h1">h нач (см)</th>
+                    <th id="th-h2">h кон (см)</th>
+                    <th id="th-obs">Наблюдение</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <textarea class="conclusion-box" id="conclusion-box" placeholder="Сделайте вывод о сохранении энергии и импульса..."></textarea>
+    </div>
+
+</div>
+
+<script>
+    // === КОНФИГУРАЦИЯ ===
+    const L = 280; // Длина нити px
+    const PIVOT_Y = 20;
+    const PI = Math.PI;
+    const G = 0.5; // Гравитация для симуляции
+
+    // Переменные состояния
+    let a1 = 0; // Угол левого шара (радианы)
+    let a2 = 0; // Угол правого шара
+    let v1 = 0; // Скорость левого
+    let v2 = 0; // Скорость правого
+    
+    let isDragging = false;
+    let isRunning = false;
+    let mode = 'elastic';
+    let lang = 'ru';
+
+    // Для записи
+    let startAngleDeg = 0;
+    let startH = 0;
+    let maxH2 = 0;
+
+    // Ссылки на DOM
+    const ui = {
+        p1: document.getElementById('p1'),
+        p2: document.getElementById('p2'),
+        b1: document.getElementById('b1'),
+        clay: document.getElementById('clay'),
+        t1L: document.getElementById('t1-L'),
+        t1R: document.getElementById('t1-R'),
+        t2L: document.getElementById('t2-L'),
+        t2R: document.getElementById('t2-R'),
+        angleVal: document.getElementById('val-angle'),
+        hDisplay: document.getElementById('h-display'),
+        hint: document.getElementById('hint-box'),
+        svg: document.getElementById('scene')
+    };
+
+    // === ИНИЦИАЛИЗАЦИЯ ===
+    function init() {
+        drawRuler();
+        updateVisuals();
+        
+        // События мыши
+        ui.b1.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('mouseup', endDrag);
+        
+        // Touch events
+        ui.b1.addEventListener('touchstart', (e) => { e.preventDefault(); startDrag(e.touches[0]); });
+        window.addEventListener('touchmove', (e) => { if(isDragging) { e.preventDefault(); doDrag(e.touches[0]); } });
+        window.addEventListener('touchend', endDrag);
+
+        requestAnimationFrame(loop);
+    }
+
+    // === ФИЗИЧЕСКИЙ ЦИКЛ ===
+    function loop() {
+        if (isRunning && !isDragging) {
+            // Упрощенная физика маятника (Эйлер)
+            const damping = 0.995; // Сопротивление воздуха
+            
+            // Шар 1
+            const acc1 = -(G/L) * Math.sin(a1) * 200; 
+            v1 += acc1;
+            v1 *= damping;
+            a1 += v1 * 0.05;
+
+            // Шар 2
+            const acc2 = -(G/L) * Math.sin(a2) * 200;
+            v2 += acc2;
+            v2 *= damping;
+            a2 += v2 * 0.05;
+
+            // Столкновение (при a1 >= a2)
+            // Допуск 0.005 рад
+            if (a1 >= a2 - 0.005) {
+                handleCollision();
+            }
+
+            // Отслеживание максимума для журнала
+            const currentH2 = calcH(a2);
+            if (currentH2 > maxH2) maxH2 = currentH2;
+        }
+
+        updateVisuals();
+        requestAnimationFrame(loop);
+    }
+
+    function handleCollision() {
+        // Защита от слипания (если уже проникли)
+        if (a1 < a2) return;
+
+        // Коррекция позиций (выталкивание)
+        const overlap = a1 - a2;
+        a1 -= overlap/2;
+        a2 += overlap/2;
+
+        if (mode === 'elastic') {
+            // Упругий удар равных масс: обмен скоростями
+            // k = 0.95 (потеря энергии в реальной установке)
+            const k = 0.95; 
+            const temp = v1;
+            v1 = v2 * k;
+            v2 = temp * k;
+        } else {
+            // Неупругий удар: слипание
+            const vCommon = (v1 + v2) / 2;
+            v1 = vCommon;
+            v2 = vCommon;
+            // Уравниваем углы (сцепка)
+            a1 = a2; 
+        }
+    }
+
+    // === ВИЗУАЛИЗАЦИЯ ===
+    function updateVisuals() {
+        // Положение Шара 1
+        const origin1X = -20;
+        const x1 = origin1X + L * Math.sin(a1);
+        const y1 = PIVOT_Y + L * Math.cos(a1);
+        
+        ui.b1.setAttribute('cx', x1);
+        ui.b1.setAttribute('cy', y1);
+        
+        // Нити 1
+        ui.t1L.setAttribute('x2', x1); ui.t1L.setAttribute('y2', y1);
+        ui.t1R.setAttribute('x2', x1); ui.t1R.setAttribute('y2', y1);
+
+        // Положение Шара 2
+        const origin2X = 20;
+        const x2 = origin2X + L * Math.sin(a2);
+        const y2 = PIVOT_Y + L * Math.cos(a2);
+        
+        ui.p2.querySelector('circle').setAttribute('cx', x2);
+        ui.p2.querySelector('circle').setAttribute('cy', y2);
+        
+        // Пластилин
+        const clayX = x2 - 19 * Math.cos(a2); 
+        const clayY = y2 + 19 * Math.sin(a2);
+        ui.clay.setAttribute('cx', clayX);
+        ui.clay.setAttribute('cy', clayY);
+        ui.clay.setAttribute('visibility', mode === 'inelastic' ? 'visible' : 'hidden');
+
+        // Нити 2
+        ui.t2L.setAttribute('x2', x2); ui.t2L.setAttribute('y2', y2);
+        ui.t2R.setAttribute('x2', x2); ui.t2R.setAttribute('y2', y2);
+
+        // UI текст
+        const deg = Math.abs(a1 * 180 / PI).toFixed(0);
+        ui.angleVal.innerText = `${deg}°`;
+        
+        const h1 = 300 - y1;
+        const h2 = 300 - y2;
+        const hShow = Math.max(h1, h2);
+        const cm = hShow * (50 / 280);
+        ui.hDisplay.innerText = `h = ${cm.toFixed(1)} см`;
+    }
+
+    function calcH(angle) {
+        const y = PIVOT_Y + L * Math.cos(angle);
+        const hPx = 300 - y;
+        return hPx * (50 / 280);
+    }
+
+    // === ДРАГ-Н-ДРОП ===
+    function startDrag(evt) {
+        if (a2 > 0.01) return; 
+        isDragging = true;
+        isRunning = false;
+        v1 = 0; v2 = 0; a2 = 0;
+        ui.b1.style.cursor = 'grabbing';
+        ui.hint.style.opacity = 0;
+        maxH2 = 0; 
+    }
+
+    function doDrag(evt) {
+        if (!isDragging) return;
+        
+        const pt = ui.svg.createSVGPoint();
+        pt.x = evt.clientX; pt.y = evt.clientY;
+        const svgP = pt.matrixTransform(ui.svg.getScreenCTM().inverse());
+        
+        const dx = svgP.x - (-20);
+        const dy = svgP.y - 20;
+        let angle = Math.atan2(dx, dy);
+        
+        if (angle > 0) angle = 0; 
+        if (angle < -1.0) angle = -1.0; 
+        
+        a1 = angle;
+        updateVisuals();
+    }
+
+    function endDrag() {
+        if(!isDragging) return;
+        isDragging = false;
+        isRunning = true;
+        ui.b1.style.cursor = 'grab';
+        
+        startAngleDeg = Math.abs(a1 * 180 / PI).toFixed(1);
+        startH = calcH(a1);
+    }
+
+    function resetSim() {
+        mode = document.getElementById('mode-select').value;
+        isRunning = false;
+        a1 = 0; a2 = 0; v1 = 0; v2 = 0;
+        ui.hint.style.opacity = 1;
+        updateVisuals();
+    }
+
+    function recordResult() {
+        const tbody = document.querySelector('#results-table tbody');
+        const row = document.createElement('tr');
+        const n = tbody.children.length + 1;
+        
+        let obs = "";
+        if (mode === 'elastic') {
+            obs = (lang === 'ru') ? "Шар 1 остановился" : "1-шар тоқтады";
+        } else {
+            obs = (lang === 'ru') ? "Движутся вместе" : "Бірге қозғалды";
+        }
+        
+        const modeText = (mode === 'elastic') ? 
+            (lang === 'ru' ? 'Упругий' : 'Серпімді') : 
+            (lang === 'ru' ? 'Неупругий' : 'Серпімсіз');
+
+        row.innerHTML = `
+            <td>${n}</td>
+            <td>${modeText}</td>
+            <td>${startAngleDeg}</td>
+            <td>${startH.toFixed(1)}</td>
+            <td>${maxH2.toFixed(1)}</td>
+            <td>${obs}</td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    // === УТИЛИТЫ ===
+    function drawRuler() {
+        const g = document.getElementById('ruler-group');
+        const bottomY = 300;
+        const pxPer10Cm = (280/50) * 10; 
+        
+        for(let i=0; i<=4; i++) {
+            const y = bottomY - i * pxPer10Cm;
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", -5); line.setAttribute("y1", y);
+            line.setAttribute("x2", 5); line.setAttribute("y2", y);
+            line.setAttribute("class", "ruler-mark");
+            g.appendChild(line);
+            
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", 20); text.setAttribute("y", y+3);
+            text.setAttribute("class", "ruler-text");
+            text.textContent = (i*10);
+            g.appendChild(text);
+        }
+    }
+
+    // === ПЕРЕВОД ===
+    const txt = {
+        ru: {
+            title: "Лаб. №19: Столкновение шаров равной массы",
+            goalH: "Цель работы", goalT: "Закрепить представление об упругом и неупругом взаимодействии на примере стальных шаров равной массы.",
+            equipH: "Оборудование",
+            eq1: "Штатив с муфтой", eq2: "Бифилярный подвес", eq3: "Два шара одинаковой массы", eq4: "Пластилин",
+            thH: "Краткая теория", 
+            thT: "Для обеспечения центрального удара используется бифилярный подвес. При абсолютно упругом ударе шаров равной массы (m₁ = m₂) налетающий шар останавливается, а покоящийся приобретает его скорость.",
+            thT2: "При неупругом ударе (с пластилином) шары слипаются и движутся вместе со скоростью v/2. Высота подъема уменьшается в 4 раза.",
+            lblMode: "Режим опыта:", 
+            optEl: "Упругий удар (Сталь)", optIn: "Неупругий удар (Пластилин)",
+            lblAng: "Угол:", btnRes: "СБРОС", btnRec: "ЗАПИСАТЬ В ЖУРНАЛ",
+            hint: "✋ Потяните левый шар и отпустите",
+            jourH: "Рабочий журнал",
+            thM: "Режим", thA: "Угол нач", thH1: "h нач", thH2: "h кон", thO: "Наблюдение",
+            placeholder: "Сделайте вывод о сохранении энергии и импульса..."
+        },
+        kz: {
+            title: "Зертхана №19: Бірдей массалы шарлардың соқтығысуы",
+            goalH: "Жұмыстың мақсаты", goalT: "Бірдей массалы болат шарлар мысалында серпімді және серпімсіз өзара әрекеттесу туралы түсінікті бекіту.",
+            equipH: "Құрал-жабдықтар",
+            eq1: "Муфталы штатив", eq2: "Бифилярлы аспа", eq3: "Бірдей массалы екі шар", eq4: "Ермексаз",
+            thH: "Қысқаша теория", 
+            thT: "Орталық соққыны қамтамасыз ету үшін бифилярлы аспа қолданылады. Абсолютті серпімді соққы кезінде (m₁ = m₂) қозғалыстағы шар тоқтап, тыныштықтағы шар оның жылдамдығын алады.",
+            thT2: "Серпімсіз соққы кезінде (ермексазбен) шарлар жабысып, v/2 жылдамдықпен бірге қозғалады. Көтерілу биіктігі 4 есе азаяды.",
+            lblMode: "Тәжірибе режимі:", 
+            optEl: "Серпімді соққы (Болат)", optIn: "Серпімсіз соққы (Ермексаз)",
+            lblAng: "Бұрыш:", btnRes: "ҚАЙТАРУ", btnRec: "ЖУРНАЛҒА ЖАЗУ",
+            hint: "✋ Сол жақ шарды тартып, жіберіңіз",
+            jourH: "Жұмыс журналы",
+            thM: "Режим", thA: "Баст. бұрыш", thH1: "h баст", thH2: "h соң", thO: "Бақылау",
+            placeholder: "Энергия мен импульстің сақталуы туралы қорытынды жасаңыз..."
+        }
+    };
+
+    function toggleLang() {
+        lang = (lang === 'ru') ? 'kz' : 'ru';
+        const t = txt[lang];
+        
+        document.getElementById('main-title').innerText = t.title;
+        document.getElementById('goal-header').innerText = t.goalH;
+        document.getElementById('goal-text').innerText = t.goalT;
+        document.getElementById('equip-header').innerText = t.equipH;
+        document.getElementById('eq-1').innerText = t.eq1;
+        document.getElementById('eq-2').innerText = t.eq2;
+        document.getElementById('eq-3').innerText = t.eq3;
+        document.getElementById('eq-4').innerText = t.eq4;
+        document.getElementById('theory-header').innerText = t.thH;
+        document.getElementById('theory-text').innerHTML = t.thT;
+        document.getElementById('theory-text-2').innerText = t.thT2;
+        
+        document.getElementById('lbl-mode').innerText = t.lblMode;
+        const sel = document.getElementById('mode-select');
+        sel.options[0].text = t.optEl;
+        sel.options[1].text = t.optIn;
+        document.getElementById('lbl-angle').innerText = t.lblAng;
+        document.getElementById('btn-reset').innerText = t.btnRes;
+        document.getElementById('btn-record').innerText = t.btnRec;
+        document.getElementById('hint-box').innerText = t.hint;
+        
+        document.getElementById('journal-header').innerText = t.jourH;
+        document.getElementById('th-mode').innerText = t.thM;
+        document.getElementById('th-angle').innerText = t.thA;
+        document.getElementById('th-h1').innerText = t.thH1;
+        document.getElementById('th-h2').innerText = t.thH2;
+        document.getElementById('th-obs').innerText = t.thO;
+        document.getElementById('conclusion-box').placeholder = t.placeholder;
+    }
+
+    init();
+</script>
+
+</body>
+</html>

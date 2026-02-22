@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лаб. №5: Равноускоренное движение</title>
+    <style>
+        :root {
+            --primary: #2980b9;
+            --accent: #e74c3c;
+            --bg: #ecf0f1;
+            --panel: #ffffff;
+            --text: #2c3e50;
+            --radius: 8px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        h1 { margin: 0; font-size: 1.3rem; }
+
+        .lang-switch {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .lang-switch:hover { background: rgba(255,255,255,0.3); }
+
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 10px;
+            gap: 15px;
+        }
+
+        .sidebar {
+            width: 380px;
+            background: var(--panel);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .tabs { display: flex; background: #dfe6e9; }
+        .tab-btn {
+            flex: 1; padding: 12px; border: none; background: none;
+            cursor: pointer; font-weight: 600; color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active { background: #fff; color: var(--primary); border-bottom-color: var(--primary); }
+
+        .tab-content { padding: 20px; overflow-y: auto; flex: 1; display: none; }
+        .tab-content.active { display: block; }
+
+        .control-group { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--primary); }
+        .val-display { font-weight: bold; color: var(--primary); }
+
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 4px;
+            cursor: pointer; font-weight: bold; margin-bottom: 10px; color: white;
+        }
+        .btn-start { background-color: var(--primary); }
+        .btn-record { background-color: #27ae60; }
+        .btn-reset { background-color: var(--accent); }
+        .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        .formula-box {
+            background: #eaf2f8; border-left: 4px solid var(--primary);
+            padding: 10px; margin: 10px 0; font-family: monospace; text-align: center; font-size: 1.1em;
+        }
+
+        .sim-container {
+            flex: 1;
+            background: #fff;
+            border-radius: var(--radius);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #dcdcdc;
+        }
+
+        .stopwatch {
+            position: absolute; top: 20px; right: 20px;
+            background: #2c3e50; color: #00ff00;
+            padding: 15px; border-radius: 6px;
+            font-family: monospace; min-width: 120px; text-align: center;
+            border: 2px solid #555;
+        }
+        .time-val { font-size: 1.8rem; }
+        .time-label { font-size: 0.8rem; color: #aaa; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #f8f9fa; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1 data-i18n="title">Лаб. №5: Равноускоренное движение</h1>
+    <button class="lang-switch" onclick="toggleLang()">RU / KZ</button>
+</header>
+
+<div class="main-wrapper">
+    <div class="sidebar">
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-setup" onclick="setTab('setup')" data-i18n="tab_setup">Установка</button>
+            <button class="tab-btn" id="tab-theory" onclick="setTab('theory')" data-i18n="tab_theory">Теория</button>
+            <button class="tab-btn" id="tab-journal" onclick="setTab('journal')" data-i18n="tab_journal">Журнал</button>
+        </div>
+
+        <div id="setup" class="tab-content active">
+            <div class="control-group">
+                <label>
+                    <span data-i18n="lbl_angle">Угол наклона (°):</span> 
+                    <span class="val-display" id="val-angle">5</span>
+                </label>
+                <input type="range" id="angle-range" min="2" max="15" value="5" step="0.5" oninput="updateSetup()">
+            </div>
+            <div class="control-group">
+                <label>
+                    <span data-i18n="lbl_dist">Расстояние S (м):</span> 
+                    <span class="val-display" id="val-s">0.40</span>
+                </label>
+                <input type="range" id="dist-range" min="0.2" max="0.9" value="0.40" step="0.05" oninput="updateSetup()">
+            </div>
+            <button class="btn btn-start" id="btn-start" onclick="startSim()" data-i18n="btn_start">ПУСК</button>
+            <button class="btn btn-record" id="btn-record" onclick="recordData()" disabled data-i18n="btn_record">ЗАПИСАТЬ</button>
+            <button class="btn btn-reset" onclick="resetSim()" data-i18n="btn_reset">СБРОС</button>
+        </div>
+
+        <div id="theory" class="tab-content">
+            <h3 data-i18n="th_goal">Цель работы</h3>
+            <p data-i18n="th_goal_text">Измерить ускорение тележки при скатывании по наклонной плоскости.</p>
+            <div class="formula-box">S = (at²) / 2</div>
+            <div class="formula-box">a = 2S / t²</div>
+        </div>
+
+        <div id="journal" class="tab-content">
+            <h3 data-i18n="th_journal">Результаты</h3>
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="th_num">№</th>
+                        <th data-i18n="th_s">S (м)</th>
+                        <th data-i18n="th_t">t (c)</th>
+                        <th data-i18n="th_a">a (м/с²)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button class="btn btn-reset" style="margin-top:10px;" onclick="clearTable()" data-i18n="btn_clear">Очистить</button>
+        </div>
+    </div>
+
+    <div class="sim-container">
+        <div class="stopwatch">
+            <div class="time-val" id="timer">0.000</div>
+            <div class="time-label" data-i18n="timer_unit">СЕКУНДЫ</div>
+        </div>
+        
+        <svg id="scene" viewBox="0 0 800 500">
+            <line x1="0" y1="450" x2="800" y2="450" stroke="#2c3e50" stroke-width="3" />
+            
+            <rect x="40" y="150" width="20" height="300" fill="#7f8c8d" />
+            <rect x="20" y="445" width="60" height="5" fill="#2c3e50" />
+
+            <g id="rail-system" transform="translate(50, 150) rotate(5)">
+                
+                <rect x="0" y="0" width="750" height="15" rx="3" fill="#bdc3c7" stroke="#95a5a6" />
+                
+                <g transform="translate(60, 0)">
+                    <rect x="0" y="-25" width="15" height="25" fill="#f1c40f" />
+                    <line x1="7.5" y1="-25" x2="7.5" y2="15" stroke="#e74c3c" stroke-dasharray="4" />
+                </g>
+
+                <g id="sensor2-group" transform="translate(460, 0)">
+                    <rect x="0" y="-25" width="15" height="25" fill="#f1c40f" />
+                    <line x1="7.5" y1="-25" x2="7.5" y2="15" stroke="#e74c3c" stroke-dasharray="4" />
+                </g>
+
+                <g transform="translate(0, 30)">
+                    <line id="measure-line" x1="67.5" y1="0" x2="467.5" y2="0" stroke="#2980b9" stroke-width="2" />
+                    <text id="measure-text" x="267" y="-5" fill="#2980b9" font-weight="bold" text-anchor="middle">S = 0.40 м</text>
+                </g>
+
+                <polyline id="traj-line" points="" stroke="#3498db" stroke-width="2" stroke-dasharray="5,5" fill="none" />
+
+                <g id="cart-group" transform="translate(67.5, 0)">
+                    <rect x="-40" y="-20" width="40" height="15" fill="#34495e" rx="3" />
+                    <circle cx="-30" cy="-2.5" r="5" fill="#2c3e50" />
+                    <circle cx="-10" cy="-2.5" r="5" fill="#2c3e50" />
+                    <rect x="-5" y="-25" width="5" height="5" fill="#e74c3c" />
+                </g>
+            </g>
+        </svg>
+    </div>
+</div>
+
+<script>
+    const G = 9.81;
+    const PXM = 600; 
+    const S1_X = 67.5; 
+
+    let currentLang = 'ru';
+    let isRunning = false;
+    let distS, angleDeg, startTime, finalTime, acceleration;
+
+    // СЛОВАРЬ ПЕРЕВОДОВ
+    const i18n = {
+        ru: {
+            title: "Лаб. №5: Равноускоренное движение",
+            tab_setup: "Установка",
+            tab_theory: "Теория",
+            tab_journal: "Журнал",
+            lbl_angle: "Угол наклона (°):",
+            lbl_dist: "Расстояние S (м):",
+            btn_start: "ПУСК",
+            btn_record: "ЗАПИСАТЬ",
+            btn_reset: "СБРОС",
+            btn_clear: "Очистить",
+            th_goal: "Цель работы",
+            th_goal_text: "Измерить ускорение тележки при скатывании по наклонной плоскости.",
+            th_journal: "Результаты",
+            th_num: "№",
+            th_s: "S (м)",
+            th_t: "t (c)",
+            th_a: "a (м/с²)",
+            timer_unit: "СЕКУНДЫ"
+        },
+        kz: {
+            title: "Зертхана №5: Теңайнымалы қозғалыс",
+            tab_setup: "Қондырғы",
+            tab_theory: "Теория",
+            tab_journal: "Журнал",
+            lbl_angle: "Көлбеу бұрышы (°):",
+            lbl_dist: "Қашықтық S (м):",
+            btn_start: "ІСКЕ ҚОСУ",
+            btn_record: "ЖАЗУ",
+            btn_reset: "ҚАЙТАРУ",
+            btn_clear: "Тазалау",
+            th_goal: "Жұмыс мақсаты",
+            th_goal_text: "Көлбеу жазықтықпен төмен сырғанау кезіндегі арбашаның үдеуін өлшеу.",
+            th_journal: "Нәтижелер",
+            th_num: "№",
+            th_s: "S (м)",
+            th_t: "t (c)",
+            th_a: "a (м/с²)",
+            timer_unit: "СЕКУНД"
+        }
+    };
+
+    function toggleLang() {
+        currentLang = currentLang === 'ru' ? 'kz' : 'ru';
+        
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18n[currentLang][key]) {
+                el.innerText = i18n[currentLang][key];
+            }
+        });
+        
+        updateSetup();
+    }
+
+    function updateSetup() {
+        if (isRunning) return;
+        
+        angleDeg = parseFloat(document.getElementById('angle-range').value);
+        distS = parseFloat(document.getElementById('dist-range').value);
+
+        document.getElementById('val-angle').innerText = angleDeg.toFixed(1);
+        document.getElementById('val-s').innerText = distS.toFixed(2);
+
+        document.getElementById('rail-system').setAttribute('transform', `translate(50, 150) rotate(${angleDeg})`);
+        
+        const s2x = S1_X + (distS * PXM) - 7.5; 
+        document.getElementById('sensor2-group').setAttribute('transform', `translate(${s2x}, 0)`);
+        
+        const measureEnd = S1_X + (distS * PXM);
+        document.getElementById('measure-line').setAttribute('x2', measureEnd);
+        document.getElementById('measure-text').setAttribute('x', S1_X + (distS * PXM)/2);
+        
+        document.getElementById('measure-text').textContent = `S = ${distS.toFixed(2)} м`;
+        
+        document.getElementById('cart-group').setAttribute('transform', `translate(${S1_X}, 0)`);
+        
+        document.getElementById('traj-line').setAttribute('points', "");
+        document.getElementById('timer').innerText = "0.000";
+    }
+
+    function startSim() {
+        if (isRunning) return;
+        isRunning = true;
+        document.getElementById('btn-start').disabled = true;
+        document.getElementById('btn-record').disabled = true;
+
+        const rad = angleDeg * Math.PI / 180;
+        acceleration = G * Math.sin(rad); 
+        finalTime = Math.sqrt(2 * distS / acceleration) * (1 + (Math.random()-0.5)*0.02);
+        
+        startTime = performance.now();
+        requestAnimationFrame(animate);
+    }
+
+    function animate(now) {
+        if (!isRunning) return;
+        const dt = (now - startTime) / 1000;
+        const traj = document.getElementById('traj-line');
+        let points = traj.getAttribute('points') || "";
+
+        if (dt < finalTime) {
+            const currentDistM = 0.5 * acceleration * dt * dt;
+            const x = S1_X + (currentDistM * PXM);
+            
+            document.getElementById('cart-group').setAttribute('transform', `translate(${x}, 0)`);
+            document.getElementById('timer').innerText = dt.toFixed(3);
+            
+            points += `${x - 20},${-10} `;
+            traj.setAttribute('points', points);
+            
+            requestAnimationFrame(animate);
+        } else {
+            isRunning = false;
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-record').disabled = false;
+            
+            const endX = S1_X + (distS * PXM);
+            document.getElementById('cart-group').setAttribute('transform', `translate(${endX}, 0)`);
+            document.getElementById('timer').innerText = finalTime.toFixed(3);
+        }
+    }
+
+    function recordData() {
+        const t = parseFloat(document.getElementById('timer').innerText);
+        const a = (2 * distS) / (t * t); 
+        const tbody = document.querySelector('#data-table tbody');
+        tbody.innerHTML += `<tr><td>${tbody.children.length+1}</td><td>${distS.toFixed(2)}</td><td>${t.toFixed(3)}</td><td>${a.toFixed(2)}</td></tr>`;
+        document.getElementById('btn-record').disabled = true;
+    }
+
+    function resetSim() {
+        isRunning = false;
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-record').disabled = true;
+        updateSetup();
+    }
+
+    function clearTable() {
+        document.querySelector('#data-table tbody').innerHTML = '';
+    }
+
+    function setTab(id) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-'+id).classList.add('active');
+        document.getElementById(id).classList.add('active');
+    }
+
+    // Инициализация при загрузке
+    updateSetup();
+</script>
+</body>
+</html>
