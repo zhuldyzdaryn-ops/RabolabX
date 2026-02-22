@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RABOlab — интерактивная лаборатория по физике</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f7f6;
+            --text: #333;
+            --white: #ffffff;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        
+        header { text-align: center; padding: 50px 20px; background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        header h1 { margin: 0; font-size: 2.5rem; letter-spacing: 2px; }
+        header p { opacity: 0.8; margin-top: 10px; font-size: 1.1rem; }
+
+        .container { flex: 1; max-width: 1200px; margin: 0 auto; padding: 20px; width: 100%; box-sizing: border-box; }
+
+        .section-title { 
+            background: var(--white); 
+            padding: 15px 20px; 
+            border-left: 6px solid var(--accent); 
+            margin: 40px 0 20px 0; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--white);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid transparent;
+        }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+        
+        .card .number { font-weight: bold; color: var(--accent); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 8px; }
+        .card h3 { margin: 0 0 10px 0; color: var(--primary); font-size: 1.15rem; line-height: 1.4; }
+        .card .btn { margin-top: auto; background: var(--accent); color: white; text-align: center; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; }
+
+        footer { background: var(--primary); color: white; text-align: center; padding: 30px 20px; margin-top: 50px; }
+        footer a { color: var(--accent); text-decoration: none; font-weight: bold; }
+        footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>RABOlab</h1>
+    <p>Интерактивная онлайн-лаборатория по физике</p>
+</header>
+
+<div class="container">
+
+    <div class="section-title">Механика: Кинематика и Динамика</div>
+    <div class="grid">
+        <a href="labs/lr1.html" class="card"><span class="number">№1</span><h3>Равномерное движение тела</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr2.html" class="card"><span class="number">№2</span><h3>Измерение ускорения</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr3.html" class="card"><span class="number">№3</span><h3>Второй закон Ньютона</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr4.html" class="card"><span class="number">№4</span><h3>Тело, брошенное горизонтально</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr5.html" class="card"><span class="number">№5</span><h3>Равноускоренное движение</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr7.html" class="card"><span class="number">№7</span><h3>Связь скорости и времени</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr8.html" class="card"><span class="number">№8</span><h3>Зависимость скорости от пути</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr9.html" class="card"><span class="number">№9</span><h3>Трение и материалы</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr14.html" class="card"><span class="number">№14</span><h3>Коэффициент трения</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr15.html" class="card"><span class="number">№15</span><h3>Движение связанных тел</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr30.html" class="card"><span class="number">№30</span><h3>Закон Гука</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr31.html" class="card"><span class="number">№31</span><h3>Сила трения скольжения</h3><div class="btn">Запустить</div></a>
+    </div>
+
+    <div class="section-title">Законы сохранения и Статика</div>
+    <div class="grid">
+        <a href="labs/lr16.html" class="card"><span class="number">№16</span><h3>Неупругое столкновение</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr17.html" class="card"><span class="number">№17</span><h3>Расталкивание тележек</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr18.html" class="card"><span class="number">№18</span><h3>Упругое столкновение</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr21.html" class="card"><span class="number">№21</span><h3>Закон сохранения энергии</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr28.html" class="card"><span class="number">№28</span><h3>Равновесие рычага</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr29.html" class="card"><span class="number">№29</span><h3>КПД наклонной плоскости</h3><div class="btn">Запустить</div></a>
+    </div>
+
+    <div class="section-title">Механические колебания</div>
+    <div class="grid">
+        <a href="labs/lr19.html" class="card"><span class="number">№19</span><h3>Столкновение шаров-маятников</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr22.html" class="card"><span class="number">№22</span><h3>Энергия при колебаниях</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr23.html" class="card"><span class="number">№23</span><h3>Период и амплитуда</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr24.html" class="card"><span class="number">№24</span><h3>Период и масса груза</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr25.html" class="card"><span class="number">№25</span><h3>Период и длина нити</h3><div class="btn">Запустить</div></a>
+    </div>
+
+    <div class="section-title">Гидростатика и Электричество</div>
+    <div class="grid">
+        <a href="labs/lr26.html" class="card"><span class="number">№26</span><h3>Закон Архимеда</h3><div class="btn">Запустить</div></a>
+        <a href="labs/lr27.html" class="card"><span class="number">№27</span><h3>Условия плавания тел</h3><div class="btn">Запустить</div></a>
+        <a href="labs/la.html" class="card"><span class="number">LAB</span><h3>Закон Ома</h3><div class="btn">Запустить</div></a>
+    </div>
+
+</div>
+
+<footer>
+    <p>© 2026 RABOlab — Виртуальные работы для учителей и учеников</p>
+    <p>Разработка: <a href="mailto:zhuldyzdaryn@gmail.com">zhuldyzdaryn@gmail.com</a></p>
+</footer>
+
+</body>
+</html>
