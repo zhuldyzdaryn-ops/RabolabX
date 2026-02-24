@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Виртуальная лаборатория</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; line-height: 1.6; position: relative; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        
+        /* Тумблер переключения языков */
+        .lang-switch { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #3498db; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        h1 { font-size: 22px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 10px; padding-right: 100px; }
+        
+        .theory-block { background: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
+        .theory-block p { margin: 5px 0; }
+        .formula { font-size: 18px; font-weight: bold; background: #eef2f3; padding: 5px 10px; border-radius: 4px; display: inline-block; font-family: 'Courier New', Courier, monospace;}
+
+        canvas { background-color: #e0f7fa; border: 2px solid #b2ebf2; border-radius: 4px; display: block; margin: 20px 0; width: 100%; height: 200px; transition: 0.2s; }
+        
+        .controls { display: flex; gap: 15px; align-items: center; margin-bottom: 10px; background: #ecf0f1; padding: 15px; border-radius: 6px; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; transition: 0.3s; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        
+        /* Стили для кнопки сброса */
+        .reset-btn { background-color: #e67e22; }
+        .reset-btn:hover { background-color: #d35400; }
+        .table-header-controls { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 20px; }
+
+        input[type="number"] { padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 80px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: center; }
+        th { background-color: #34495e; color: white; }
+        .status { font-weight: bold; color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="lang-switch">
+        <span>RU</span>
+        <label class="switch">
+            <input type="checkbox" id="langToggle" onchange="toggleLanguage()">
+            <span class="slider"></span>
+        </label>
+        <span>KZ</span>
+    </div>
+
+    <h1 id="t_title">Лабораторная работа №4: Скорость поверхностной волны</h1>
+    
+    <div class="theory-block">
+        <p><b id="t_goal_label">Цель:</b> <span id="t_goal_text">Определение скорости распространения волн на поверхности воды.</span></p>
+        <p><b id="t_form_label">Расчетная формула:</b> <span class="formula">v = l / t_ср</span> </p>
+        <p><i id="t_form_desc">где <b>l</b> — дальность распространения (м), а <b>t_ср</b> — среднее время (с).</i></p>
+    </div>
+
+    <div class="controls">
+        <label><span id="t_dist_label">Дальность l (0.5 - 1.0 м):</span> 
+            <input type="number" id="distanceInput" min="0.5" max="1.0" step="0.1" value="0.7">
+        </label>
+        <button id="dropBtn" onclick="startExperiment()"><span id="t_btn_drop">Бросить шарик</span></button>
+        <span class="status" id="timerDisplay">Ожидание...</span>
+    </div>
+
+    <canvas id="vesselCanvas" width="800" height="200"></canvas>
+
+    <div class="table-header-controls">
+        <h3 style="margin: 0; color: #2c3e50;" id="t_table_title">Результаты измерений</h3>
+        <button id="resetBtn" class="reset-btn" onclick="resetExperiment()"><span id="t_btn_reset">Сброс данных</span></button>
+    </div>
+
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th id="th_exp">№ опыта</th>
+                <th id="th_t">Время t, c</th>
+                <th id="th_t_avg">Среднее время t_ср, c</th>
+                <th id="th_l">Дальность l, м</th>
+                <th id="th_v">Скорость v, м/с</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // --- Словари локализации ---
+    const dict = {
+        ru: {
+            t_title: "Лабораторная работа №4: Скорость поверхностной волны",
+            t_goal_label: "Цель:",
+            t_goal_text: "Определение скорости распространения волн на поверхности воды.",
+            t_form_label: "Расчетная формула:",
+            t_form_desc: "где <b>l</b> — дальность распространения (м), а <b>t_ср</b> — среднее время (с).",
+            t_dist_label: "Дальность l (0.5 - 1.0 м):",
+            t_btn_drop: "Бросить шарик",
+            t_btn_reset: "Сброс данных",
+            t_table_title: "Результаты измерений",
+            status_wait: "Ожидание...",
+            status_wave: "Волна идет...",
+            status_done: "Эксперимент завершен!",
+            status_time: "Время:",
+            th_exp: "№ опыта",
+            th_t: "Время t, c",
+            th_t_avg: "Среднее время t_ср, c",
+            th_l: "Дальность l, м",
+            th_v: "Скорость v, м/с",
+            alert_done: "Опыты завершены. Нажмите «Сброс данных» для новой серии.",
+            alert_range: "Пожалуйста, введите расстояние от 0.5 до 1.0 м"
+        },
+        kz: {
+            t_title: "Зертханалық жұмыс №4: Беттік толқынның жылдамдығы",
+            t_goal_label: "Мақсаты:",
+            t_goal_text: "Су бетіндегі толқындардың таралу жылдамдығын анықтау.",
+            t_form_label: "Есептеу формуласы:",
+            t_form_desc: "мұндағы <b>l</b> — таралу қашықтығы (м), ал <b>t_орт</b> — орташа уақыт (с).",
+            t_dist_label: "Қашықтық l (0.5 - 1.0 м):",
+            t_btn_drop: "Шарды тастау",
+            t_btn_reset: "Деректерді тазарту",
+            t_table_title: "Өлшеу нәтижелері",
+            status_wait: "Күту...",
+            status_wave: "Толқын жүріп жатыр...",
+            status_done: "Эксперимент аяқталды!",
+            status_time: "Уақыт:",
+            th_exp: "Тәжірибе №",
+            th_t: "Уақыт t, c",
+            th_t_avg: "Орташа уақыт t_орт, c",
+            th_l: "Қашықтық l, м",
+            th_v: "Жылдамдық v, м/с",
+            alert_done: "Тәжірибелер аяқталды. Жаңа серия үшін «Деректерді тазарту» түймесін басыңыз.",
+            alert_range: "0.5-тен 1.0 м-ге дейінгі қашықтықты енгізіңіз"
+        }
+    };
+
+    let currentLang = 'ru';
+
+    function toggleLanguage() {
+        const isKz = document.getElementById('langToggle').checked;
+        currentLang = isKz ? 'kz' : 'ru';
+        
+        for (let key in dict[currentLang]) {
+            const el = document.getElementById(key);
+            if (el && !key.startsWith('status_') && !key.startsWith('alert_')) {
+                el.innerHTML = dict[currentLang][key];
+            }
+        }
+        
+        if (!isAnimating && attemptCount === 0) {
+            document.getElementById('timerDisplay').innerText = dict[currentLang].status_wait;
+        } else if (attemptCount === MAX_ATTEMPTS) {
+            document.getElementById('timerDisplay').innerText = dict[currentLang].status_done;
+        }
+    }
+
+    // --- Логика приложения ---
+    const canvas = document.getElementById('vesselCanvas');
+    const ctx = canvas.getContext('2d');
+    const dropBtn = document.getElementById('dropBtn');
+    const distanceInput = document.getElementById('distanceInput');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const tableBody = document.getElementById('tableBody');
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const REAL_WAVE_SPEED = 0.28; 
+    const PIXELS_PER_METER = 700; 
+
+    let waves = []; 
+    let isAnimating = false;
+    let waveHitRecorded = false; 
+    let startTime = 0;
+    let distanceMeters = 0.7;
+    let currentSpeedPxPerFrame = 0;
+    let animationFrameId;
+    
+    let attemptCount = 0;
+    let times = [];
+    const MAX_ATTEMPTS = 5;
+
+    distanceInput.addEventListener('input', (e) => {
+        if (attemptCount === 0 && !isAnimating) {
+            let val = parseFloat(e.target.value);
+            if (val >= 0.5 && val <= 1.0) {
+                distanceMeters = val;
+                drawScene();
+            }
+        }
+    });
+
+    function playDropSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.1);
+    }
+
+    function drawScene() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = '#bdc3c7';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(50, canvas.height - 20);
+        ctx.lineTo(50 + 1 * PIXELS_PER_METER, canvas.height - 20);
+        ctx.stroke();
+
+        const floatX = 50 + distanceMeters * PIXELS_PER_METER;
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(floatX, canvas.height / 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#7f8c8d';
+        ctx.beginPath();
+        ctx.arc(50, canvas.height / 2, 5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function startExperiment() {
+        if (attemptCount >= MAX_ATTEMPTS) {
+            alert(dict[currentLang].alert_done);
+            return;
+        }
+
+        distanceMeters = parseFloat(distanceInput.value);
+        if (distanceMeters < 0.5 || distanceMeters > 1.0) {
+            alert(dict[currentLang].alert_range);
+            return;
+        }
+
+        playDropSound();
+
+        dropBtn.disabled = true;
+        distanceInput.disabled = true; 
+        
+        waves = [0, -30, -60, -90]; 
+        waveHitRecorded = false;
+        isAnimating = true;
+        
+        timerDisplay.innerText = dict[currentLang].status_wave;
+        
+        const noise = 1 + (Math.random() * 0.1 - 0.05); 
+        const currentSpeedMs = REAL_WAVE_SPEED * noise;
+        currentSpeedPxPerFrame = (currentSpeedMs * PIXELS_PER_METER) / 60; 
+
+        startTime = performance.now();
+        animationFrameId = requestAnimationFrame(animateWaves);
+    }
+
+    function animateWaves() {
+        if (!isAnimating) return;
+
+        drawScene();
+        let allWavesPassed = true;
+        const targetDistancePx = distanceMeters * PIXELS_PER_METER;
+
+        for (let i = 0; i < waves.length; i++) {
+            waves[i] += currentSpeedPxPerFrame;
+
+            if (waves[i] > 0) {
+                let alpha = Math.max(0, 1 - (waves[i] / (canvas.width * 0.8)));
+                ctx.strokeStyle = `rgba(52, 152, 219, ${alpha})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(50, canvas.height / 2, waves[i], -Math.PI/2, Math.PI/2);
+                ctx.stroke();
+            }
+
+            if (waves[i] < canvas.width) {
+                allWavesPassed = false;
+            }
+        }
+
+        if (waves[0] >= targetDistancePx && !waveHitRecorded) {
+            waveHitRecorded = true;
+            const endTime = performance.now();
+            const timeSeconds = (endTime - startTime) / 1000;
+            recordResult(timeSeconds);
+        }
+
+        if (!allWavesPassed) {
+            animationFrameId = requestAnimationFrame(animateWaves);
+        } else {
+            isAnimating = false; 
+            setTimeout(drawScene, 500); 
+        }
+    }
+
+    function recordResult(timeTaken) {
+        attemptCount++;
+        times.push(timeTaken);
+        timerDisplay.innerText = `${dict[currentLang].status_time} ${timeTaken.toFixed(2)} с`;
+
+        const tr = document.createElement('tr');
+        
+        if (attemptCount === MAX_ATTEMPTS) {
+            const sumTime = times.reduce((a, b) => a + b, 0);
+            const avgTime = sumTime / MAX_ATTEMPTS;
+            const velocity = distanceMeters / avgTime;
+
+            tr.innerHTML = `
+                <td>${attemptCount}</td>
+                <td>${timeTaken.toFixed(2)}</td>
+                <td><b>${avgTime.toFixed(2)}</b></td>
+                <td>${distanceMeters.toFixed(2)}</td>
+                <td><b>${velocity.toFixed(3)}</b></td>
+            `;
+            timerDisplay.innerText = dict[currentLang].status_done;
+        } else {
+            tr.innerHTML = `
+                <td>${attemptCount}</td>
+                <td>${timeTaken.toFixed(2)}</td>
+                <td>-</td>
+                <td>${distanceMeters.toFixed(2)}</td>
+                <td>-</td>
+            `;
+            dropBtn.disabled = false;
+        }
+        
+        tableBody.appendChild(tr);
+    }
+
+    // Функция сброса данных
+    function resetExperiment() {
+        // Останавливаем анимацию, если она идет
+        isAnimating = false;
+        cancelAnimationFrame(animationFrameId);
+        
+        // Сбрасываем переменные
+        attemptCount = 0;
+        times = [];
+        tableBody.innerHTML = ''; // Очищаем таблицу
+        
+        // Разблокируем интерфейс
+        dropBtn.disabled = false;
+        distanceInput.disabled = false;
+        
+        // Возвращаем статус в начальное положение
+        timerDisplay.innerText = dict[currentLang].status_wait;
+        
+        // Перерисовываем пустую сцену
+        distanceMeters = parseFloat(distanceInput.value);
+        drawScene();
+    }
+
+    // Инициализация
+    distanceMeters = parseFloat(distanceInput.value);
+    toggleLanguage(); 
+    drawScene();
+</script>
+
+</body>
+</html>
