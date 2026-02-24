@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Виртуальная лаборатория: Сложение сил</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; line-height: 1.6; position: relative; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        
+        /* Тумблер переключения языков */
+        .lang-switch { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #3498db; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        h1 { font-size: 22px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 10px; padding-right: 120px; }
+        
+        .theory-block { background: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
+        .theory-block p { margin: 5px 0; }
+        .formula { font-size: 16px; font-weight: bold; background: #eef2f3; padding: 5px 10px; border-radius: 4px; display: inline-block; font-family: 'Courier New', Courier, monospace;}
+
+        .workspace { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        
+        canvas { background-color: #ecf0f1; border: 2px solid #bdc3c7; border-radius: 4px; flex: 1; min-width: 500px; height: 450px; }
+        
+        .controls { flex: 0 0 300px; background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; gap: 15px; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group label { font-weight: bold; font-size: 14px; color: #34495e; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .val-display { color: #e74c3c; font-weight: bold; }
+        
+        button { background-color: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 4px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        button:hover { background-color: #2ecc71; }
+        .btn-reset { background-color: #e74c3c; margin-top: auto; }
+        .btn-reset:hover { background-color: #c0392b; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; }
+        th { background-color: #34495e; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="lang-switch">
+        <span>RU</span>
+        <label class="switch">
+            <input type="checkbox" id="langToggle" onchange="toggleLanguage()">
+            <span class="slider"></span>
+        </label>
+        <span>KZ</span>
+    </div>
+
+    <h1 id="t_title">Лабораторная работа: Сложение сил, направленных под углом</h1>
+    
+    <div class="theory-block">
+        <p><b id="t_goal_label">Цель работы:</b> <span id="t_goal_text">определить величины сил опытным путем и экспериментально проверить правило сложения сил.</span></p>
+        <p><b id="t_theory_label">Краткая теория:</b> <span id="t_theory_text">Равнодействующая сила равна векторной сумме всех сил, приложенных к телу. Модуль равнодействующей силы рассчитывается по формуле:</span></p>
+        <p><span class="formula">R = &radic;(F<sub>1</sub>&sup2; + F<sub>2</sub>&sup2; - 2F<sub>1</sub>F<sub>2</sub>cos &alpha;)</span></p>
+    </div>
+
+    <div class="workspace">
+        <canvas id="simCanvas" width="600" height="450"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label><span id="t_weight_label">Сила тяжести груза (Fт):</span> <span id="weightVal" class="val-display">2.0 Н</span></label>
+                <input type="range" id="weightSlider" min="1.0" max="5.0" step="0.5" value="2.0">
+            </div>
+            
+            <div class="control-group">
+                <label><span id="t_angle_label">Угол между нитями (&alpha;):</span> <span id="angleVal" class="val-display">60&deg;</span></label>
+                <input type="range" id="angleSlider" min="20" max="150" step="5" value="60">
+            </div>
+            
+            <button id="t_btn_record" onclick="recordData()">Записать показания</button>
+            <button id="t_btn_reset" class="btn-reset" onclick="resetTable()">Очистить таблицу</button>
+        </div>
+    </div>
+
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th rowspan="2" id="th_exp">№ опыта</th>
+                <th colspan="4" id="th_measured">Измерено</th>
+                <th id="th_calculated">Вычислено</th>
+            </tr>
+            <tr>
+                <th id="th_ft">Сила тяжести F<sub>т</sub>, Н</th>
+                <th id="th_fn1">Сила натяжения F<sub>н1</sub>, Н</th>
+                <th id="th_fn2">Сила натяжения F<sub>н2</sub>, Н</th>
+                <th id="th_angle">Угол &alpha;, &deg;</th>
+                <th id="th_r">Равнодействующая R, Н</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // --- Словари локализации ---
+    const dict = {
+        ru: {
+            t_title: "Лабораторная работа: Сложение сил, направленных под углом",
+            t_goal_label: "Цель работы:",
+            t_goal_text: "определить величины сил опытным путем и экспериментально проверить правило сложения сил.",
+            t_theory_label: "Краткая теория:",
+            t_theory_text: "Равнодействующая сила равна векторной сумме всех сил, приложенных к телу. Модуль равнодействующей силы рассчитывается по формуле:",
+            t_weight_label: "Сила тяжести груза (F<sub>т</sub>):",
+            t_angle_label: "Угол между нитями (&alpha;):",
+            t_btn_record: "Записать показания",
+            t_btn_reset: "Очистить таблицу",
+            th_exp: "№ опыта",
+            th_measured: "Измерено",
+            th_calculated: "Вычислено",
+            th_ft: "Сила тяжести F<sub>т</sub>, Н",
+            th_fn1: "Сила натяжения F<sub>н1</sub>, Н",
+            th_fn2: "Сила натяжения F<sub>н2</sub>, Н",
+            th_angle: "Угол &alpha;, &deg;",
+            th_r: "Равнодействующая R, Н",
+            unit_n: "Н"
+        },
+        kz: {
+            t_title: "Зертханалық жұмыс: Бұрыш жасай бағытталған күштерді қосу",
+            t_goal_label: "Жұмыс мақсаты:",
+            t_goal_text: "күштердің шамасын тәжірибе жүзінде анықтау және күштерді қосу ережесін эксперименталды түрде тексеру.",
+            t_theory_label: "Қысқаша теория:",
+            t_theory_text: "Тең әсерлі күш денеге түсірілген барлық күштердің векторлық қосындысына тең. Тең әсерлі күштің модулі мына формула бойынша есептеледі:",
+            t_weight_label: "Жүктің ауырлық күші (F<sub>а</sub>):",
+            t_angle_label: "Жіптер арасындағы бұрыш (&alpha;):",
+            t_btn_record: "Көрсеткіштерді жазу",
+            t_btn_reset: "Кестені тазарту",
+            th_exp: "Тәжірибе №",
+            th_measured: "Өлшенді",
+            th_calculated: "Есептелді",
+            th_ft: "Ауырлық күші F<sub>а</sub>, Н",
+            th_fn1: "Керу күші F<sub>к1</sub>, Н",
+            th_fn2: "Керу күші F<sub>к2</sub>, Н",
+            th_angle: "Бұрыш &alpha;, &deg;",
+            th_r: "Тең әсерлі күш R, Н",
+            unit_n: "Н"
+        }
+    };
+
+    let currentLang = 'ru';
+
+    function toggleLanguage() {
+        const isKz = document.getElementById('langToggle').checked;
+        currentLang = isKz ? 'kz' : 'ru';
+        
+        for (let key in dict[currentLang]) {
+            const el = document.getElementById(key);
+            if (el && key !== 'unit_n') {
+                el.innerHTML = dict[currentLang][key];
+            }
+        }
+        
+        // Обновляем суффиксы значений
+        const weightValCurrent = parseFloat(weightSlider.value).toFixed(1);
+        weightVal.innerText = weightValCurrent + " " + dict[currentLang].unit_n;
+        
+        drawSimulation(); // Перерисовываем холст для обновления текста на нем
+    }
+
+    // --- Логика отрисовки и приложения ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const weightSlider = document.getElementById('weightSlider');
+    const angleSlider = document.getElementById('angleSlider');
+    const weightVal = document.getElementById('weightVal');
+    const angleVal = document.getElementById('angleVal');
+    const tableBody = document.getElementById('tableBody');
+
+    let experimentCount = 0;
+
+    function drawSimulation() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        let FT = parseFloat(weightSlider.value);
+        let alphaDeg = parseFloat(angleSlider.value);
+        let alphaRad = alphaDeg * Math.PI / 180;
+        
+        // НОВЫЕ КООРДИНАТЫ ЦЕНТРА: 
+        // Смещаем установку ниже (originY = 220), чтобы динамометры не обрезались сверху
+        const originX = canvas.width / 2;
+        const originY = 220;
+        
+        let halfAngleRad = alphaRad / 2;
+        let Fn = FT / (2 * Math.cos(halfAngleRad));
+        
+        // Отрисовка дуги угла
+        ctx.beginPath();
+        ctx.arc(originX, originY, 40, -Math.PI/2 - halfAngleRad, -Math.PI/2 + halfAngleRad);
+        ctx.strokeStyle = '#e67e22';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.fillStyle = '#e67e22';
+        ctx.font = "bold 14px Arial";
+        ctx.fillText(alphaDeg + "°", originX - 12, originY - 50);
+
+        // Расчет координат для нитей (увеличили длину нитей для наглядности)
+        let length = 130;
+        let leftX = originX - length * Math.sin(halfAngleRad);
+        let leftY = originY - length * Math.cos(halfAngleRad);
+        
+        let rightX = originX + length * Math.sin(halfAngleRad);
+        let rightY = originY - length * Math.cos(halfAngleRad);
+
+        // Нити
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(leftX, leftY);
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(rightX, rightY);
+        ctx.strokeStyle = '#7f8c8d';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Динамометры
+        drawDynamometer(leftX, leftY, -halfAngleRad, Fn);
+        drawDynamometer(rightX, rightY, halfAngleRad, Fn);
+
+        // Груз
+        let blockWidth = 40 + FT * 10; 
+        let blockHeight = 40 + FT * 10;
+        
+        ctx.fillStyle = '#34495e';
+        ctx.fillRect(originX - blockWidth/2, originY + 25, blockWidth, blockHeight);
+        
+        // Нить от узла к грузу
+        ctx.beginPath();
+        ctx.moveTo(originX, originY);
+        ctx.lineTo(originX, originY + 25);
+        ctx.stroke();
+
+        // Подпись силы тяжести прямо на грузе
+        ctx.fillStyle = '#fff';
+        ctx.font = "bold 15px Arial";
+        let unit = dict[currentLang].unit_n;
+        // Центрируем текст на грузе
+        ctx.fillText(FT.toFixed(1) + " " + unit, originX - 18, originY + 25 + blockHeight/2 + 5);
+        
+        // Вектор силы тяжести (красная стрелка вниз)
+        drawArrow(originX, originY, originX, originY + 100, '#c0392b');
+    }
+
+    function drawDynamometer(x, y, angle, force) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(-18, -65, 36, 65);
+        ctx.strokeStyle = '#d35400';
+        ctx.strokeRect(-18, -65, 36, 65);
+        
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-2, 0, 4, 15); 
+        
+        let displayForce = force.toFixed(2);
+        let unit = dict[currentLang].unit_n;
+        
+        ctx.save();
+        ctx.rotate(-angle); 
+        ctx.fillStyle = '#c0392b';
+        ctx.font = "bold 14px Arial";
+        ctx.fillText(displayForce + " " + unit, -20, -75);
+        ctx.restore();
+        
+        ctx.restore();
+    }
+
+    function drawArrow(fromX, fromY, toX, toY, color) {
+        let headlen = 10; 
+        let dx = toX - fromX;
+        let dy = toY - fromY;
+        let angle = Math.atan2(dy, dx);
+        
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    function recordData() {
+        experimentCount++;
+        let FT = parseFloat(weightSlider.value);
+        let alphaDeg = parseFloat(angleSlider.value);
+        let alphaRad = alphaDeg * Math.PI / 180;
+        
+        let Fn_ideal = FT / (2 * Math.cos(alphaRad / 2));
+        
+        let noise1 = 1 + (Math.random() * 0.04 - 0.02);
+        let noise2 = 1 + (Math.random() * 0.04 - 0.02);
+        
+        let Fn1 = Fn_ideal * noise1;
+        let Fn2 = Fn_ideal * noise2;
+
+        let R_calc = Math.sqrt(Math.pow(Fn1, 2) + Math.pow(Fn2, 2) + 2 * Fn1 * Fn2 * Math.cos(alphaRad));
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${experimentCount}</td>
+            <td>${FT.toFixed(1)}</td>
+            <td>${Fn1.toFixed(2)}</td>
+            <td>${Fn2.toFixed(2)}</td>
+            <td>${alphaDeg}</td>
+            <td><b>${R_calc.toFixed(2)}</b></td>
+        `;
+        tableBody.appendChild(tr);
+    }
+
+    function resetTable() {
+        experimentCount = 0;
+        tableBody.innerHTML = '';
+    }
+
+    // Слушатели ползунков
+    weightSlider.addEventListener('input', (e) => {
+        let val = parseFloat(e.target.value).toFixed(1);
+        weightVal.innerText = val + " " + dict[currentLang].unit_n;
+        drawSimulation();
+    });
+
+    angleSlider.addEventListener('input', (e) => {
+        angleVal.innerText = e.target.value + "°";
+        drawSimulation();
+    });
+
+    // Инициализация
+    toggleLanguage();
+    drawSimulation();
+</script>
+
+</body>
+</html>
