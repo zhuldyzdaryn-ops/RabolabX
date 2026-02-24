@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабораторная работа: Момент инерции</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; line-height: 1.6; position: relative; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        
+        .lang-switch { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #3498db; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        h1 { font-size: 22px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 10px; padding-right: 120px; }
+        
+        .theory-block { background: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 20px; border-radius: 0 4px 4px 0; font-size: 14px;}
+        .theory-block p { margin: 5px 0; }
+        .formula { font-weight: bold; background: #eef2f3; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', Courier, monospace;}
+
+        .workspace { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        
+        canvas { background-color: #ecf0f1; border: 2px solid #bdc3c7; border-radius: 4px; flex: 1; min-width: 550px; height: 400px; }
+        
+        .controls { flex: 0 0 300px; background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; gap: 12px; font-size: 14px;}
+        .control-group { display: flex; flex-direction: column; gap: 4px; }
+        .control-group label { font-weight: bold; color: #34495e; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .val-display { color: #e74c3c; font-weight: bold; }
+        
+        button { background-color: #2980b9; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 4px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        button:hover { background-color: #2471a3; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        .btn-reset { background-color: #e67e22; margin-top: auto; }
+        .btn-reset:hover { background-color: #d35400; }
+
+        .table-wrapper { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid #bdc3c7; padding: 6px; text-align: center; }
+        th { background-color: #34495e; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="lang-switch">
+        <span>RU</span>
+        <label class="switch">
+            <input type="checkbox" id="langToggle" onchange="toggleLanguage()">
+            <span class="slider"></span>
+        </label>
+        <span>KZ</span>
+    </div>
+
+    <h1 id="t_title">Лабораторная работа №3: Изучение движения тела по наклонному желобу</h1>
+    
+    <div class="theory-block">
+        <p><b id="t_goal_label">Цель работы:</b> <span id="t_goal_text">научиться определять момент инерции вращательного тела.</span></p>
+        <p><b id="t_theory_label">Формулы:</b> <span id="t_theory_text">Экспериментальный момент:</span> <span class="formula">J = mR²(4hH - l²) / l²</span>. <span id="t_theory_text2">Теоретический момент сплошного шара:</span> <span class="formula">J_т = (2/5)mR²</span>.</p>
+    </div>
+
+    <div class="workspace">
+        <canvas id="simCanvas" width="650" height="400"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label><span id="t_mass_label">Масса шара (m):</span> <span id="massVal" class="val-display">0.05 кг</span></label>
+                <input type="range" id="massSlider" min="0.01" max="0.10" step="0.01" value="0.05">
+            </div>
+            <div class="control-group">
+                <label><span id="t_rad_label">Радиус шара (R):</span> <span id="radVal" class="val-display">0.02 м</span></label>
+                <input type="range" id="radSlider" min="0.01" max="0.04" step="0.005" value="0.02">
+            </div>
+            <div class="control-group">
+                <label><span id="t_h_label">Высота желоба (h):</span> <span id="hVal" class="val-display">0.15 м</span></label>
+                <input type="range" id="hSlider" min="0.10" max="0.30" step="0.01" value="0.15">
+            </div>
+            <div class="control-group">
+                <label><span id="t_H_label">Высота стола (H):</span> <span id="HVal" class="val-display">0.80 м</span></label>
+                <input type="range" id="HSlider" min="0.50" max="1.20" step="0.05" value="0.80">
+            </div>
+            
+            <button id="t_btn_drop" onclick="startExperiment()">Запустить шар</button>
+            <button id="t_btn_reset" class="btn-reset" onclick="resetTable()">Сброс данных</button>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th rowspan="2" id="th_exp">№ опыта</th>
+                    <th colspan="5" id="th_measured">Измерено</th>
+                    <th colspan="2" id="th_calculated">Вычислено</th>
+                </tr>
+                <tr>
+                    <th>m, кг</th>
+                    <th>R, м</th>
+                    <th>h, м</th>
+                    <th>H, м</th>
+                    <th>l, м</th>
+                    <th>J_эксп, кг·м²</th>
+                    <th>J_теор, кг·м²</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const dict = {
+        ru: {
+            t_title: "Лабораторная работа №3: Изучение движения тела по наклонному желобу",
+            t_goal_label: "Цель работы:",
+            t_goal_text: "научиться определять момент инерции вращательного тела.",
+            t_theory_label: "Формулы:",
+            t_theory_text: "Экспериментальный момент:",
+            t_theory_text2: "Теоретический момент сплошного шара:",
+            t_mass_label: "Масса шара (m):",
+            t_rad_label: "Радиус шара (R):",
+            t_h_label: "Высота желоба (h):",
+            t_H_label: "Высота стола (H):",
+            t_btn_drop: "Запустить шар",
+            t_btn_reset: "Сброс данных",
+            th_exp: "№ опыта",
+            th_measured: "Измерено",
+            th_calculated: "Вычислено",
+            alert_done: "Опыты завершены. Нажмите «Сброс данных»."
+        },
+        kz: {
+            t_title: "Зертханалық жұмыс №3: Көлбеу науамен домалайтын дененің қозғалысын зерттеу",
+            t_goal_label: "Жұмыс мақсаты:",
+            t_goal_text: "айналмалы дененің инерция моментін анықтауды үйрену.",
+            t_theory_label: "Формулалар:",
+            t_theory_text: "Эксперименталды момент:",
+            t_theory_text2: "Тұтас шардың теориялық моменті:",
+            t_mass_label: "Шардың массасы (m):",
+            t_rad_label: "Шардың радиусы (R):",
+            t_h_label: "Науаның биіктігі (h):",
+            t_H_label: "Үстелдің биіктігі (H):",
+            t_btn_drop: "Шарды жіберу",
+            t_btn_reset: "Деректерді тазарту",
+            th_exp: "Тәжірибе №",
+            th_measured: "Өлшенді",
+            th_calculated: "Есептелді",
+            alert_done: "Тәжірибелер аяқталды. «Деректерді тазарту» түймесін басыңыз."
+        }
+    };
+
+    let currentLang = 'ru';
+
+    function toggleLanguage() {
+        const isKz = document.getElementById('langToggle').checked;
+        currentLang = isKz ? 'kz' : 'ru';
+        for (let key in dict[currentLang]) {
+            const el = document.getElementById(key);
+            if (el) el.innerHTML = dict[currentLang][key];
+        }
+        updateDisplays();
+    }
+
+    // --- Логика холста и физики ---
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const massSlider = document.getElementById('massSlider');
+    const radSlider = document.getElementById('radSlider');
+    const hSlider = document.getElementById('hSlider');
+    const HSlider = document.getElementById('HSlider');
+    const tableBody = document.getElementById('tableBody');
+    const btnDrop = document.getElementById('t_btn_drop');
+
+    let isAnimating = false;
+    let experimentCount = 0;
+    const MAX_ATTEMPTS = 5;
+
+    // Масштабы для отрисовки
+    const SCALE = 250; // пикселей в метре для отрисовки (условно)
+    const offsetX = 100; // отступ слева
+    const floorY = 350; // уровень пола в пикселях
+
+    let ballX = 0, ballY = 0;
+    let animPhase = 0; // 0 - ждет, 1 - скатывается, 2 - летит
+    let t = 0; // время симуляции
+    let v_horizontal = 0;
+    let l_experimental = 0;
+    let dropPointY = 0; // пиксельная Y координаты срыва
+    let dropPointX = 0; // пиксельная X координаты срыва
+    
+    // Следы от бумаги копировальной (точки падения)
+    let marks = [];
+
+    function updateDisplays() {
+        document.getElementById('massVal').innerText = parseFloat(massSlider.value).toFixed(2) + (currentLang === 'ru' ? " кг" : " кг");
+        document.getElementById('radVal').innerText = parseFloat(radSlider.value).toFixed(3) + (currentLang === 'ru' ? " м" : " м");
+        document.getElementById('hVal').innerText = parseFloat(hSlider.value).toFixed(2) + (currentLang === 'ru' ? " м" : " м");
+        document.getElementById('HVal').innerText = parseFloat(HSlider.value).toFixed(2) + (currentLang === 'ru' ? " м" : " м");
+        if (!isAnimating) drawScene();
+    }
+
+    [massSlider, radSlider, hSlider, HSlider].forEach(slider => {
+        slider.addEventListener('input', updateDisplays);
+    });
+
+    function drawScene() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        let h = parseFloat(hSlider.value);
+        let H = parseFloat(HSlider.value);
+        let R = parseFloat(radSlider.value);
+        
+        // Координаты установки на холсте
+        let pixelH = H * 200; // масштабируем H для холста
+        let pixelh = h * 200;
+        
+        dropPointX = offsetX + 150;
+        dropPointY = floorY - pixelH;
+        let startX = offsetX;
+        let startY = dropPointY - pixelh;
+
+        // Рисуем пол
+        ctx.fillStyle = '#95a5a6';
+        ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+        
+        // Рисуем штатив
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(offsetX - 10, floorY - pixelH - pixelh, 8, pixelH + pixelh); // стойка
+        ctx.fillRect(offsetX - 30, floorY - 5, 48, 5); // база
+
+        // Рисуем желоб (кривая Безье)
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        // Контрольная точка для создания плавного спуска
+        ctx.quadraticCurveTo(startX + 20, dropPointY, dropPointX, dropPointY);
+        ctx.strokeStyle = '#7f8c8d';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Отрисовка отметок на полу (копировальная бумага)
+        marks.forEach(markX => {
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.arc(markX, floorY, 4, 0, Math.PI*2);
+            ctx.fill();
+        });
+
+        // Рисуем шар
+        let drawR = R * 400; // визуальный радиус
+        if (!isAnimating) {
+            ballX = startX;
+            ballY = startY - drawR;
+        }
+
+        ctx.fillStyle = '#e67e22';
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, Math.max(8, drawR), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#d35400';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Вспомогательные линии (размеры)
+        ctx.strokeStyle = '#bdc3c7';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        
+        // Линия H
+        ctx.beginPath(); ctx.moveTo(dropPointX, dropPointY); ctx.lineTo(dropPointX, floorY); ctx.stroke();
+        ctx.fillStyle = '#34495e'; ctx.font = "12px Arial"; ctx.fillText("H", dropPointX + 5, dropPointY + pixelH/2);
+        
+        // Линия h
+        ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(dropPointX, startY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(dropPointX, startY); ctx.lineTo(dropPointX, dropPointY); ctx.stroke();
+        ctx.fillText("h", dropPointX + 5, startY + pixelh/2);
+        
+        ctx.setLineDash([]);
+    }
+
+    function startExperiment() {
+        if (experimentCount >= MAX_ATTEMPTS) {
+            alert(dict[currentLang].alert_done);
+            return;
+        }
+
+        isAnimating = true;
+        btnDrop.disabled = true;
+        
+        // Блокируем параметры во время серии опытов
+        massSlider.disabled = true; radSlider.disabled = true;
+        hSlider.disabled = true; HSlider.disabled = true;
+
+        let h = parseFloat(hSlider.value);
+        let H = parseFloat(HSlider.value);
+        
+        // ФИЗИКА: Идеальная дальность полета 
+        // Исходя из закона сохранения энергии для скатывающегося шара: J = (2/5)mR^2
+        // Получаем l^2 = 20*h*H / 7  => l = sqrt(20*h*H/7)
+        let l_ideal = Math.sqrt((20 * h * H) / 7);
+        
+        // Добавляем искусственную погрешность (1-3%), чтобы сымитировать трение и погрешность измерений
+        let noise = 1 + (Math.random() * 0.04 - 0.02);
+        l_experimental = l_ideal * noise;
+
+        // Расчет скорости вылета для анимации (горизонтальный бросок)
+        // t_fall = sqrt(2H/g), v = l / t_fall
+        let t_fall = Math.sqrt((2 * H) / 9.81);
+        v_horizontal = l_experimental / t_fall;
+
+        animPhase = 1; // Скатывание
+        t = 0;
+        requestAnimationFrame(animate);
+    }
+
+    function animate() {
+        if (!isAnimating) return;
+        
+        let h = parseFloat(hSlider.value);
+        let H = parseFloat(HSlider.value);
+        let R = parseFloat(radSlider.value);
+        
+        let pixelH = H * 200;
+        let pixelh = h * 200;
+        let startX = offsetX;
+        let startY = dropPointY - pixelh;
+        let drawR = R * 400;
+
+        if (animPhase === 1) {
+            // Упрощенная кинематика скатывания по кривой
+            t += 0.03; 
+            let progress = Math.min(t, 1); // от 0 до 1
+            
+            // Интерполяция по кривой Безье
+            let p0 = {x: startX, y: startY};
+            let p1 = {x: startX + 20, y: dropPointY};
+            let p2 = {x: dropPointX, y: dropPointY};
+            
+            ballX = Math.pow(1-progress, 2)*p0.x + 2*(1-progress)*progress*p1.x + Math.pow(progress, 2)*p2.x;
+            ballY = Math.pow(1-progress, 2)*p0.y + 2*(1-progress)*progress*p1.y + Math.pow(progress, 2)*p2.y - Math.max(8, drawR);
+
+            if (progress >= 1) {
+                animPhase = 2; // Переход к полету
+                t = 0;
+            }
+        } else if (animPhase === 2) {
+            // Свободное падение по параболе (горизонтальный бросок)
+            t += 0.03; // виртуальное время
+            
+            // v_horizontal * t масштабируем для холста
+            // 1 метр реального мира = 200 пикселей на холсте (исходя из масштаба H)
+            let pixel_x = (v_horizontal * t) * 200; 
+            let pixel_y = (9.81 * t * t / 2) * 200;
+            
+            ballX = dropPointX + pixel_x;
+            ballY = dropPointY + pixel_y - Math.max(8, drawR);
+
+            if (ballY + Math.max(8, drawR) >= floorY) {
+                // Шар коснулся пола
+                ballY = floorY - Math.max(8, drawR);
+                marks.push(ballX); // Оставляем след
+                isAnimating = false;
+                recordData();
+            }
+        }
+
+        drawScene();
+        if (isAnimating) requestAnimationFrame(animate);
+    }
+
+    function recordData() {
+        experimentCount++;
+        let m = parseFloat(massSlider.value);
+        let R = parseFloat(radSlider.value);
+        let h = parseFloat(hSlider.value);
+        let H = parseFloat(HSlider.value);
+        let l = l_experimental;
+
+        // Расчет J по формуле из методички (4): J = mR^2(4hH - l^2)/l^2
+        let J_exp = (m * Math.pow(R, 2) * (4 * h * H - Math.pow(l, 2))) / Math.pow(l, 2);
+        
+        // Теоретический расчет для сплошного шара: J = (2/5)mR^2
+        let J_theor = (2/5) * m * Math.pow(R, 2);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${experimentCount}</td>
+            <td>${m.toFixed(2)}</td>
+            <td>${R.toFixed(3)}</td>
+            <td>${h.toFixed(2)}</td>
+            <td>${H.toFixed(2)}</td>
+            <td><b>${l.toFixed(3)}</b></td>
+            <td style="color:#e74c3c; font-weight:bold;">${J_exp.toExponential(2)}</td>
+            <td style="color:#27ae60; font-weight:bold;">${J_theor.toExponential(2)}</td>
+        `;
+        tableBody.appendChild(tr);
+
+        setTimeout(() => {
+            btnDrop.disabled = false;
+            drawScene(); // Возвращаем шар на старт
+        }, 1000);
+    }
+
+    function resetTable() {
+        experimentCount = 0;
+        marks = [];
+        tableBody.innerHTML = '';
+        massSlider.disabled = false; radSlider.disabled = false;
+        hSlider.disabled = false; HSlider.disabled = false;
+        btnDrop.disabled = false;
+        drawScene();
+    }
+
+    // Инициализация
+    toggleLanguage();
+</script>
+
+</body>
+</html>
